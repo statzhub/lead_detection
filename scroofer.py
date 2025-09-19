@@ -32,6 +32,12 @@ class Scroofer:
         permit_type = self.config["Search Form"]["type"]
         select.select_by_visible_text(permit_type)
 
+        start_date_id = self.config["Search Form"]["start_date_id"]
+        start_date = self.config["Search Form"]["start_date"]
+        self.browser.execute_script("""
+            document.getElementById(arguments[0]).value = arguments[1];
+        """, start_date_id, start_date)
+
     def search(self) -> None:
         """This method performs the initial search"""
         self._fill_form_()
