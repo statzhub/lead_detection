@@ -31,12 +31,18 @@ class Scroofer:
         select = Select(inp)
         permit_type = self.config["Search Form"]["type"]
         select.select_by_visible_text(permit_type)
-
+        #set start date
         start_date_id = self.config["Search Form"]["start_date_id"]
         start_date = self.config["Search Form"]["start_date"]
         self.browser.execute_script("""
             document.getElementById(arguments[0]).value = arguments[1];
         """, start_date_id, start_date)
+        # set end date
+        end_date_id = self.config["Search Form"]["end_date_id"]
+        end_date = self.config["Search Form"]["end_date"]
+        self.browser.execute_script("""
+                    document.getElementById(arguments[0]).value = arguments[1];
+                """, end_date_id, end_date)
 
     def search(self) -> None:
         """This method performs the initial search"""
