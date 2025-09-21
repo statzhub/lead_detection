@@ -2,6 +2,8 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import configparser
 
 
@@ -44,6 +46,9 @@ class Scroofer:
                     document.getElementById(arguments[0]).value = arguments[1];
                 """, end_date_id, end_date)
 
+    def clean_js(self, js) -> str:
+        return js.replace("javascript:", "", 1)
+
     def search(self) -> None:
         """This method performs the initial search"""
         self._fill_form_()
@@ -56,7 +61,42 @@ class Scroofer:
         js_to_execute = submit_button.get_attribute("href")
         # the href needs to be cleaned
         if js_to_execute and js_to_execute.startswith("javascript:"):
-            js_to_execute.replace("javascript:", "", 1)
-            self.browser.execute_script(js_to_execute)
+            self.browser.execute_script(self.clean_js(js_to_execute))
         else:
             raise AttributeError("Did not find js in submit_button")
+
+        self.check_pages()
+
+    def check_pages(self) -> None:
+        table_id = self.config["Table"]["table_id"]
+        next_button_text = self.config["Table"]["next_button_text"]
+        data = {}
+        while True:
+            try:
+                #wait for table to appear from search
+                table = WebDriverWait(self.browser, 10).until(
+                    EC.presence_of_element_located((By.ID, table_id))
+                )
+                #used to get number of headers or columns
+                header = table.find_elements(By.TAG_NAME, "th")
+                #loop through each row to store their data
+                for row in table.find_elements(By.TAG_NAME, "tr"):
+                    cols = row.find_elements(By.TAG_NAME, "td")
+                    if not cols or len(cols) != len(header):
+                        continue
+                    row_data = [col.text for col in cols]
+                    #index is currently hardcoded to the ID column for Hillsborough County
+                    data[row_data[2]] = row_data
+                #find the element of the next button
+                next = self.browser.find_element(By.PARTIAL_LINK_TEXT, str(next_button_text))
+                #clean href
+                js_to_execute = next.get_attribute("href")
+                if js_to_execute and js_to_execute.startswith("javascript:"):
+                    self.browser.execute_script(self.clean_js(js_to_execute))
+                    #wait for table to change to table of next page
+                    WebDriverWait(self.browser, 10).until(EC.staleness_of(table))
+                else:
+                    raise AttributeError("Did not find js in submit_button")
+            except Exception:
+                #no table is found or next button is no longer enabled
+                break
