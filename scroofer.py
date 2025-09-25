@@ -1,3 +1,5 @@
+import csv
+
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
@@ -88,9 +90,9 @@ class Scroofer:
                     #index is currently hardcoded to the ID column for Hillsborough County
                     data[row_data[2]] = row_data
                 #find the element of the next button
-                next = self.browser.find_element(By.PARTIAL_LINK_TEXT, str(next_button_text))
+                Next = self.browser.find_element(By.PARTIAL_LINK_TEXT, str(next_button_text))
                 #clean href
-                js_to_execute = next.get_attribute("href")
+                js_to_execute = Next.get_attribute("href")
                 if js_to_execute and js_to_execute.startswith("javascript:"):
                     self.browser.execute_script(self.clean_js(js_to_execute))
                     #wait for table to change to table of next page
@@ -100,3 +102,21 @@ class Scroofer:
             except Exception:
                 #no table is found or next button is no longer enabled
                 break
+        if data is not None:
+            self.parseFile(data)
+
+    def parseFile(self, data):
+        headers = [
+            "Date", "Record Number", "Record Type", "Address",
+            "Description", "Project Name", "Expiration Date",
+            "Status", "Action", "Short Notes"
+        ]
+        with open("roofing.csv", "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
+            for key, value_list in data.items():
+                if value_list:
+                    value_list.pop(0) #the first element seems to consistently be ''
+                    writer.writerow(value_list)
+
+
