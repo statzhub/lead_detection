@@ -1,4 +1,5 @@
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -47,7 +48,10 @@ class Scroofer:
                 """, end_date_id, end_date)
 
     def clean_js(self, js) -> str:
-        return js.replace("javascript:", "", 1)
+        if js and js.startswith("javascript:"):
+            return js.replace("javascript:", "", 1)
+        else:
+            raise AttributeError("Did not find js in submit_button")
 
     def search(self) -> None:
         """This method performs the initial search"""
@@ -60,17 +64,15 @@ class Scroofer:
 
         js_to_execute = submit_button.get_attribute("href")
         # the href needs to be cleaned
-        if js_to_execute and js_to_execute.startswith("javascript:"):
-            self.browser.execute_script(self.clean_js(js_to_execute))
-        else:
-            raise AttributeError("Did not find js in submit_button")
+        self.browser.execute_script(self.clean_js(js_to_execute))
 
         self.check_pages()
 
     def check_pages(self) -> None:
         table_id = self.config["Table"]["table_id"]
         next_button_text = self.config["Table"]["next_button_text"]
-        data = {}
+        data = []
+        header = None
         while True:
             try:
                 #wait for table to appear from search
@@ -78,25 +80,21 @@ class Scroofer:
                     EC.presence_of_element_located((By.ID, table_id))
                 )
                 #used to get number of headers or columns
-                header = table.find_elements(By.TAG_NAME, "th")
+                if not header:
+                    header = table.find_elements(By.TAG_NAME, "th")
                 #loop through each row to store their data
                 for row in table.find_elements(By.TAG_NAME, "tr"):
                     cols = row.find_elements(By.TAG_NAME, "td")
                     if not cols or len(cols) != len(header):
                         continue
-                    row_data = [col.text for col in cols]
-                    #index is currently hardcoded to the ID column for Hillsborough County
-                    data[row_data[2]] = row_data
+                    data.append([col.text for col in cols])
                 #find the element of the next button
                 next = self.browser.find_element(By.PARTIAL_LINK_TEXT, str(next_button_text))
-                #clean href
+                #clean href and execute js
                 js_to_execute = next.get_attribute("href")
-                if js_to_execute and js_to_execute.startswith("javascript:"):
-                    self.browser.execute_script(self.clean_js(js_to_execute))
-                    #wait for table to change to table of next page
-                    WebDriverWait(self.browser, 10).until(EC.staleness_of(table))
-                else:
-                    raise AttributeError("Did not find js in submit_button")
-            except Exception:
+                self.browser.execute_script(self.clean_js(js_to_execute))
+                # wait for table to change to table of next page
+                WebDriverWait(self.browser, 10).until(EC.staleness_of(table))
+            except NoSuchElementException:
                 #no table is found or next button is no longer enabled
                 break
