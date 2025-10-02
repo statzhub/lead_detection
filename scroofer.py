@@ -1,3 +1,4 @@
+import csv
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import Select
@@ -72,7 +73,8 @@ class Scroofer:
         table_id = self.config["Table"]["table_id"]
         next_button_text = self.config["Table"]["next_button_text"]
         data = []
-        header = None
+        headers = None
+
         while True:
             try:
                 #wait for table to appear from search
@@ -80,12 +82,13 @@ class Scroofer:
                     EC.presence_of_element_located((By.ID, table_id))
                 )
                 #used to get number of headers or columns
-                if not header:
-                    header = table.find_elements(By.TAG_NAME, "th")
+                if not headers:
+                    header_element = table.find_elements(By.TAG_NAME, "th")
+                    headers = [header.text for header in header_element]
                 #loop through each row to store their data
                 for row in table.find_elements(By.TAG_NAME, "tr"):
                     cols = row.find_elements(By.TAG_NAME, "td")
-                    if not cols or len(cols) != len(header):
+                    if not cols or len(cols) != len(headers):
                         continue
                     data.append([col.text for col in cols])
                 #find the element of the next button
@@ -98,3 +101,16 @@ class Scroofer:
             except NoSuchElementException:
                 #no table is found or next button is no longer enabled
                 break
+        if data:
+            self.parseFile(data, headers)
+
+    def parseFile(self, data, headers):
+        #hardcoded to pop first header attribute
+        headers.pop(0)
+        with open("roofing.csv", "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
+            for row in data:
+                if row:
+                    row.pop(0) #the first element seems to consistently be ''
+                    writer.writerow(row)
