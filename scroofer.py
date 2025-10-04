@@ -1,7 +1,11 @@
+import csv
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import configparser
 
 
@@ -31,6 +35,24 @@ class Scroofer:
         select = Select(inp)
         permit_type = self.config["Search Form"]["type"]
         select.select_by_visible_text(permit_type)
+        #set start date
+        start_date_id = self.config["Search Form"]["start_date_id"]
+        start_date = self.config["Search Form"]["start_date"]
+        self.browser.execute_script("""
+            document.getElementById(arguments[0]).value = arguments[1];
+        """, start_date_id, start_date)
+        # set end date
+        end_date_id = self.config["Search Form"]["end_date_id"]
+        end_date = self.config["Search Form"]["end_date"]
+        self.browser.execute_script("""
+                    document.getElementById(arguments[0]).value = arguments[1];
+                """, end_date_id, end_date)
+
+    def clean_js(self, js) -> str:
+        if js and js.startswith("javascript:"):
+            return js.replace("javascript:", "", 1)
+        else:
+            raise AttributeError("Did not find js in submit_button")
 
     def search(self) -> None:
         """This method performs the initial search"""
@@ -43,8 +65,52 @@ class Scroofer:
 
         js_to_execute = submit_button.get_attribute("href")
         # the href needs to be cleaned
-        if js_to_execute and js_to_execute.startswith("javascript:"):
-            js_to_execute.replace("javascript:", "", 1)
-            self.browser.execute_script(js_to_execute)
-        else:
-            raise AttributeError("Did not find js in submit_button")
+        self.browser.execute_script(self.clean_js(js_to_execute))
+
+        self.check_pages()
+
+    def check_pages(self) -> None:
+        table_id = self.config["Table"]["table_id"]
+        next_button_text = self.config["Table"]["next_button_text"]
+        data = []
+        headers = None
+
+        while True:
+            try:
+                #wait for table to appear from search
+                table = WebDriverWait(self.browser, 10).until(
+                    EC.presence_of_element_located((By.ID, table_id))
+                )
+                #used to get number of headers or columns
+                if not headers:
+                    header_element = table.find_elements(By.TAG_NAME, "th")
+                    headers = [header.text for header in header_element]
+                #loop through each row to store their data
+                for row in table.find_elements(By.TAG_NAME, "tr"):
+                    cols = row.find_elements(By.TAG_NAME, "td")
+                    if not cols or len(cols) != len(headers):
+                        continue
+                    data.append([col.text for col in cols])
+                #find the element of the next button
+                next = self.browser.find_element(By.PARTIAL_LINK_TEXT, str(next_button_text))
+                #clean href and execute js
+                js_to_execute = next.get_attribute("href")
+                self.browser.execute_script(self.clean_js(js_to_execute))
+                # wait for table to change to table of next page
+                WebDriverWait(self.browser, 10).until(EC.staleness_of(table))
+            except NoSuchElementException:
+                #no table is found or next button is no longer enabled
+                break
+        if data:
+            self.parseFile(data, headers)
+
+    def parseFile(self, data, headers):
+        #hardcoded to pop first header attribute
+        headers.pop(0)
+        with open("roofing.csv", "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
+            for row in data:
+                if row:
+                    row.pop(0) #the first element seems to consistently be ''
+                    writer.writerow(row)
