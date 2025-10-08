@@ -6,14 +6,17 @@
   min-height: 100vh;
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
+
 .county {
   fill: #ccc;
   stroke: #333;
   stroke-width: 0.5px;
 }
-.county:hover {
-  fill: greenyellow;
+
+:not(.active):hover {
+  fill: beige !important;
 }
+
 .tooltip {
   position: absolute;
   pointer-events: none;
@@ -25,4 +28,12 @@
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
   opacity: 0;
   transition: opacity 0.2s;
+}
+
+.active {
+  fill: wheat;
+}
+
+:not(.active) {
+  fill: lightgray !important
 }
