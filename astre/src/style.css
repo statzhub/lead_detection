@@ -13,7 +13,8 @@
   stroke-width: 0.5px;
 }
 
-:not(.active):hover {
+/* Only allow hovering on states that aren't active */
+:not(.zip) :not(.active):hover {
   fill: beige !important;
 }
 
@@ -36,4 +37,8 @@
 
 :not(.active) {
   fill: lightgray !important
+}
+
+.zip {
+  fill: lightslategray !important;
 }

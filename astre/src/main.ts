@@ -7,6 +7,10 @@ const height = 600;
 
 const app = d3.select<HTMLDivElement, unknown>('#app');
 
+const current_view = app.append("div")
+  .attr("id", "view")
+  .attr("class", "view");
+
 const map = app.append("svg")
   .attr("id", "map")
   .attr("width", width)
@@ -51,6 +55,36 @@ d3.json("florida.json").then((topo) => {
       tooltip.style('opacity', 0);
     })
     .on('click', clicked);
+  current_view
+    .style('opacity', 1)
+    .html("Florida")
+    .style('left', 10 + 'px')
+    .style('top', 10 + 'px');
+
+  // let points = projection([-80.141379, 25.784355]);
+  // g.append("circle")
+  //   .attr("class", "zip")
+  //   .attr("r", 5)
+  //   .attr("transform", "translate(" + points[0] + "," + points[1] + ")");
+});
+
+d3.csv("zipcodes.csv").then((d) => {
+  const florida_zips = d.filter((o) => o["admin name1"] === "Florida");
+  // console.log(florida_zips);
+  florida_zips.forEach((zip_code) => {
+    let project = projection([parseFloat(zip_code.longitude), parseFloat(zip_code.latitude)]);
+    g.append("circle")
+      .attr("class", "zip")
+      .attr("r", 0.5)
+      .attr("transform", "translate(" + project[0] + "," + project[1] + ")")
+      .on('mouseover', (event, d) => {
+        tooltip
+          .style('opacity', 1)
+          .html(zip_code["postal code"])
+          .style('left', event.pageX + 10 + 'px')
+          .style('top', event.pageY - 15 + 'px');
+      });
+  })
 });
 
 function clicked(event: MouseEvent, d: any) {
@@ -72,15 +106,25 @@ function clicked(event: MouseEvent, d: any) {
   g.transition()
     .duration(750)
     .attr("transform", `translate(${translate})scale(${scale})`);
+
+  current_view
+    .style('opacity', 1)
+    .html(d.properties.county)
+    .style('left', 10 + 'px')
+    .style('top', 10 + 'px');
 }
 
 function reset() {
   active.classed("active", false);
   active = d3.select(null);
-
   g.transition()
     .duration(750)
     .attr("transform", "");
+  current_view
+    .style('opacity', 1)
+    .html("Florida")
+    .style('left', 10 + 'px')
+    .style('top', 10 + 'px');
 }
 
 map.on("click", reset);
