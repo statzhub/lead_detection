@@ -1,5 +1,6 @@
 # weather_station_code - city_name
 import pandas as pd
+import numpy as np
 import requests
 from selenium import webdriver
 from selenium.common import NoSuchElementException
@@ -10,9 +11,9 @@ from selenium.webdriver.support import expected_conditions as EC
 import time, os
 from collections import defaultdict
 
-# change code to city
 # get code_city pairs from: https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_STATION/
-def code_to_city():
+# store in "Datasets/code_city.csv" file
+def get_code_city_pairs():
     url = "https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_STATION/"
     driver = webdriver.Firefox()
 
@@ -35,7 +36,7 @@ def code_to_city():
 
     code_city_pair = {}
     for texts in cleaned_texts:
-        texts = texts.rstrip('/')
+        texts = texts.rstrip('/').replace("%20"," ")
         # print(texts)
         city, code = texts.split('_')
         code_city_pair[code] = city
@@ -44,19 +45,25 @@ def code_to_city():
     df = pd.DataFrame(list(code_city_pair.items()), columns=['Code', 'City'])
     df.to_csv("Datasets/code_city.csv", index=False)
 
+# find all cities in these county, store in "Datasets/county_city.csv" file
+def get_cities_from_counties():
+    fl_zipcodes = pd.read_csv("Datasets/fl_zipcodes.csv")
+    # find all cities in the counties
+    filtered_df = fl_zipcodes[["county_name", "city"]]
+    filtered_df = filtered_df.drop_duplicates()
+    filtered_df.to_csv("Datasets/county_city.csv", index=False)
 
 
+df = pd.read_csv("Datasets/code_city.csv")
+code_city = dict(zip(df["Code"], df["City"]))
+# change code to city
+def code_to_city(code):
+    return code_city.get(code,np.nan)
 
+# get all cities weather data from these counties
+def get_county_data(counties):
 
-def scrap_city_code_from_web():
-    b = 0
-
-
-
-# find cities in this county in this dataset
-def find_county_city(county):
-    c = 0
-
+    c=0
 
 # Download weather data
 # download data from {start_year}-1-1 to {end_year}-12-31
@@ -136,8 +143,9 @@ def __main__():
     # use 2021_daily.csv as an example
     df = pd.read_csv("Datasets/2021_daily.csv")
     # process_weather_data(df)
+    # print(code_to_city(260))
+    # get_cities_from_counties()
 
-    code_to_city()
     target_counties = ["Miami-Dade", "Hillsborough"]
 
 
