@@ -11,8 +11,40 @@ import time, os
 from collections import defaultdict
 
 # change code to city
+# get code_city pairs from: https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_STATION/
 def code_to_city():
-    a = 0
+    url = "https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_STATION/"
+    driver = webdriver.Firefox()
+
+    driver.get(url)
+    time.sleep(3)
+    a_tags = driver.find_elements(By.TAG_NAME, "a")
+    a_texts = []
+    for a in a_tags:
+        href = a.get_attribute("href")  # 获取 href 属性
+        if href:
+            a_texts.append(href)
+
+    cleaned_texts = [t for t in a_texts if t not in ('https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/')]
+    prefix = "https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_STATION/"
+    cleaned_texts = [t.replace(prefix, "") for t in cleaned_texts]
+
+    # only keep city-code pairs
+    cleaned_texts = [t for t in cleaned_texts if t not in ('?C=N;O=D', '?C=M;O=A', '?C=S;O=A', '?C=D;O=A')]
+    print(cleaned_texts)
+
+    code_city_pair = {}
+    for texts in cleaned_texts:
+        texts = texts.rstrip('/')
+        # print(texts)
+        city, code = texts.split('_')
+        code_city_pair[code] = city
+
+    # store it in csv file for future use
+    df = pd.DataFrame(list(code_city_pair.items()), columns=['Code', 'City'])
+    df.to_csv("Datasets/code_city.csv", index=False)
+
+
 
 
 
@@ -103,9 +135,9 @@ def change_weather_info_day_week(df_input):
 def __main__():
     # use 2021_daily.csv as an example
     df = pd.read_csv("Datasets/2021_daily.csv")
-    process_weather_data(df)
+    # process_weather_data(df)
 
-
+    code_to_city()
     target_counties = ["Miami-Dade", "Hillsborough"]
 
 
