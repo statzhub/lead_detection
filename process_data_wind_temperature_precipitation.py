@@ -53,17 +53,35 @@ def get_cities_from_counties():
     filtered_df = filtered_df.drop_duplicates()
     filtered_df.to_csv("Datasets/county_city.csv", index=False)
 
-
-df = pd.read_csv("Datasets/code_city.csv")
-code_city = dict(zip(df["Code"], df["City"]))
+df_cc = pd.read_csv("Datasets/code_city.csv")
+code_city = dict(zip(df_cc["Code"], df_cc["City"]))
 # change code to city
 def code_to_city(code):
     return code_city.get(code,np.nan)
 
-# get all cities weather data from these counties
-def get_county_data(counties):
+city_code = dict(zip(df_cc["City"].str.upper(), df_cc["Code"]))
+# change city to code
+def city_to_code(city):
+    return city_code.get(city,np.nan)
 
-    c=0
+df_cd = pd.read_csv("Datasets/county_city.csv")
+# get all cities' weather data from these counties
+def get_county_data(counties):
+    # get all weather station cities from these counties
+    filtered_df_cd = df_cd[df_cd["county_name"].isin(counties)]
+
+    # find weather station data of this city
+    cities_df = set(filtered_df_cd["city"])
+    cities_station = set(df_cc["City"].str.upper())
+    common_cities = cities_df & cities_station
+    common_cities_code = [city_to_code(c) for c in common_cities]
+
+    data_df = []
+    # return the data frame of those data
+    # County, City, Weatherdata(MaxTemp...)
+
+
+
 
 # Download weather data
 # download data from {start_year}-1-1 to {end_year}-12-31
@@ -112,7 +130,7 @@ def process_weather_data(original_data):
         all_processed_data.append(processed_data)
 
     total_df = pd.concat(all_processed_data, ignore_index=True)
-    total_df.to_csv("Datasets/week_weather_data.csv", index=False)
+    total_df.to_csv("Datasets/2021_week_weather_data.csv", index=False)
     return total_df
 
 # change weather data from day to week
@@ -142,12 +160,13 @@ def change_weather_info_day_week(df_input):
 def __main__():
     # use 2021_daily.csv as an example
     df = pd.read_csv("Datasets/2021_daily.csv")
-    # process_weather_data(df)
+    # TODO: hardcode the result file name to 2021_week_weather_data.csv, need to change when there's a loop
+    process_weather_data(df)
     # print(code_to_city(260))
     # get_cities_from_counties()
 
     target_counties = ["Miami-Dade", "Hillsborough"]
-
+    get_county_data(target_counties)
 
 __main__()
 
